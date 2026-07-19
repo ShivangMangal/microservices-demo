@@ -36,10 +36,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GHCR_PAT }}
 
+      - name: Set Docker Context Path
+        run: |
+          if [ "${{ matrix.service }}" == "cartservice" ]; then
+            echo "DOCKER_CONTEXT=./src/cartservice/src" >> $GITHUB_ENV
+          else
+            echo "DOCKER_CONTEXT=./src/${{ matrix.service }}" >> $GITHUB_ENV
+          fi
+
       - name: Build Docker Image
         uses: docker/build-push-action@v5
         with:
-          context: ./src/${{ matrix.service }}
+          context: ${{ env.DOCKER_CONTEXT }}
           push: false # We only build first, push happens after security scan
           load: true
           tags: ${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/${{ matrix.service }}:${{ env.VERSION }}
