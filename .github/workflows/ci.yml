@@ -24,8 +24,7 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+
 
       - name: Convert GitHub Repository Owner to Lowercase
         run: echo "REPO_OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
@@ -46,12 +45,7 @@ jobs:
           fi
 
       - name: Build Docker Image
-        uses: docker/build-push-action@v5
-        with:
-          context: ${{ env.DOCKER_CONTEXT }}
-          push: false 
-          load: true
-          tags: ${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/${{ matrix.service }}:${{ env.VERSION }}
+        run: docker build -t ${{ env.REGISTRY }}/${{ env.REPO_OWNER }}/${{ matrix.service }}:${{ env.VERSION }} ${{ env.DOCKER_CONTEXT }}
 
       - name: Run Trivy Vulnerability Scanner
         uses: aquasecurity/trivy-action@master
