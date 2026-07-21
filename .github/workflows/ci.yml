@@ -50,3 +50,36 @@ jobs:
       - name: Push Docker Image to GHCR
         if: github.event_name == 'push'
         run: docker push ${{ env.REGISTRY }}/shivangmangal/${{ matrix.service }}:${{ env.VERSION }}
+
+  update-gitops:
+    needs: build-test-scan-push
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout GitOps Repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository_owner }}/atlas-gitops
+          token: ${{ secrets.GITOPS_PAT }}
+          path: atlas-gitops
+
+      - name: Update Helm Values for Dev Environment
+        run: |
+          cd atlas-gitops/charts/online-boutique
+          
+          # Install yq to safely manipulate the YAML file without breaking structure
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod a+x /usr/local/bin/yq
+          
+          # Inject the new image routing and semantic version
+          yq e -i '.images.repository = "ghcr.io/shivangmangal"' values-dev.yaml
+          yq e -i '.images.tag = "${{ env.VERSION }}"' values-dev.yaml
+
+      - name: Commit and Push to Trigger Argo CD
+        run: |
+          cd atlas-gitops
+          git config user.name "GitHub Actions Bot"
+          git config user.email "actions@github.com"
+          git add charts/online-boutique/values-dev.yaml
+          git commit -m "deploy: update dev environment to ${{ env.VERSION }}"
+          git push
